@@ -46,21 +46,7 @@ def extract_data():
         conn.close()
 
 
-@task(
-    name="Transform Data",
-    description="Clean customers and standardize order amounts to USD",
-)
-def transform_data(exchange_rates, customers, orders):
-
-    logger = get_run_logger()
-    logger.info("Transforming data...")
-
-    # ------------------
-    # Customers
-    # ------------------
-
-    logger.info("Transforming customers data...")
-
+def transform_customers(customers):
     customers = customers.copy()
 
     customers["signup_date"] = pd.to_datetime(
@@ -93,13 +79,9 @@ def transform_data(exchange_rates, customers, orders):
         .fillna("unknown@domain.com")
     )
 
-    # ------------------
-    # Orders
-    # ------------------
+    return customers
 
-    logger.info("Transforming orders data...")
-
-
+def transform_orders(orders, exchange_rates):
     orders = orders.copy()
     exchange_rates = exchange_rates.copy()
 
@@ -142,6 +124,33 @@ def transform_data(exchange_rates, customers, orders):
     )
 
     orders["currency"] = "USD"
+
+    return orders
+
+@task(
+    name="Transform Data",
+    description="Clean customers and standardize order amounts to USD",
+)
+def transform_data(exchange_rates, customers, orders):
+
+    logger = get_run_logger()
+    logger.info("Transforming data...")
+
+    # ------------------
+    # Customers
+    # ------------------
+
+    logger.info("Transforming customers data...")
+
+    customers = transform_customers(customers)
+
+    # ------------------
+    # Orders
+    # ------------------
+
+    logger.info("Transforming orders data...")
+
+    orders = transform_orders(orders, exchange_rates)
 
     # Format dates as strings for SQLite compatibility
     customers["signup_date"] = (
